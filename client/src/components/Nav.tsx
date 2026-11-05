@@ -1,89 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Logo from './Logo';
 import { useTheme } from '../hooks/useTheme';
 
-interface Props {
-  onMenuToggle: (open: boolean) => void;
-}
+const LINKS = [
+  { href: '#projects', label: 'Projetos' },
+  { href: '#about', label: 'Sobre' },
+  { href: '#contact', label: 'Contato' },
+  { href: '#music', label: 'Music' },
+];
 
-export default function Nav({ onMenuToggle }: Props) {
-  const { isDark, toggle } = useTheme();
-  const [scrolled, setScrolled] = useState(false);
+const CLOSE_ON_SCROLL_PX = 40;
 
+export default function Nav() {
+  const { toggle } = useTheme();
+  const [open, setOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // While open, the menu closes on scroll, Escape or a click outside
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (!open) return;
 
-  const links = [
-    { href: '#projects', label: 'Projetos' },
-    { href: '#about', label: 'Sobre' },
-    { href: '#contact', label: 'Contato' },
-  ];
+    const openedAt = window.scrollY;
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - openedAt) > CLOSE_ON_SCROLL_PX) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!navRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
 
   return (
-    <nav
-      style={{
-        position: 'fixed', top: 28, left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1000,
-        display: 'flex', alignItems: 'center', gap: 28,
-        padding: '10px 28px',
-        background: 'var(--nav)',
-        backdropFilter: 'blur(20px)',
-        border: `1px solid ${scrolled ? 'var(--nav-b)' : 'transparent'}`,
-        borderRadius: 50,
-        transition: 'border-color 0.3s, box-shadow 0.3s',
-        boxShadow: scrolled ? '0 4px 20px rgba(0,0,0,0.06)' : 'none',
-      }}
-    >
-      <a href="#" aria-label="Home">
-        <Logo size={28} />
-      </a>
+    <nav ref={navRef} className={`nav ${open ? 'is-open' : ''}`} aria-label="Principal">
+      <div className="nav__bar">
+        <a href="#hero" aria-label="Voltar ao início" className="nav__logo">
+          <Logo size={32} />
+        </a>
 
-      {/* Desktop links */}
-      <div className="desktop-only" style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-        {links.map((l) => (
-          <a
-            key={l.href}
-            href={l.href}
-            className="nav-link"
-            style={{
-              fontFamily: "'Space Mono', monospace",
-              fontSize: 10, letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-            }}
+        <div className="nav__actions">
+          <button className="theme-toggle" onClick={toggle} aria-label="Alternar tema claro e escuro">
+            <span className="icon-moon" aria-hidden="true">☽</span>
+            <span className="icon-sun" aria-hidden="true">☀</span>
+          </button>
+
+          <button
+            ref={menuButtonRef}
+            className="nav__menu-button"
+            onClick={() => setOpen((prev) => !prev)}
+            aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={open}
+            aria-controls="nav-panel"
           >
-            {l.label}
-          </a>
-        ))}
+            <span /><span /><span />
+          </button>
+        </div>
       </div>
 
-      {/* Theme toggle */}
-      <button className="theme-toggle" onClick={toggle} aria-label="Toggle theme">
-        <span className="icon-moon" style={{ fontSize: 14 }}>☽</span>
-        <span className="icon-sun" style={{ fontSize: 14 }}>☀</span>
-      </button>
-
-      {/* LED */}
-      <span className="hw-led desktop-only" />
-
-      {/* Hamburger (mobile) */}
-      <button
-        className="mobile-only"
-        onClick={() => onMenuToggle(true)}
-        aria-label="Menu"
-        style={{
-          background: 'none', border: 'none', color: 'var(--text)',
-          display: 'flex', flexDirection: 'column', gap: 4,
-          cursor: 'pointer', padding: 4,
-        }}
-      >
-        <span style={{ width: 18, height: 1.5, background: 'var(--text)', borderRadius: 1 }} />
-        <span style={{ width: 14, height: 1.5, background: 'var(--text)', borderRadius: 1 }} />
-        <span style={{ width: 18, height: 1.5, background: 'var(--text)', borderRadius: 1 }} />
-      </button>
+      <div id="nav-panel" className="nav__panel">
+        <ul className="nav__links">
+          {LINKS.map((link, i) => (
+            <li key={link.href} style={{ '--i': i } as React.CSSProperties}>
+              <a href={link.href} className="nav__link" onClick={() => setOpen(false)}>
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </nav>
   );
 }

@@ -19,16 +19,21 @@ export function useGitHubProfile() {
 export function useGitHubRepos() {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     fetch('/api/github/repos')
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setRepos(data);
+      .then((r) => {
+        if (!r.ok) throw new Error(`Repos request failed with ${r.status}`);
+        return r.json();
       })
-      .catch(console.error)
+      .then(setRepos)
+      .catch((error) => {
+        console.error(error);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  return { repos, loading };
+  return { repos, loading, failed };
 }

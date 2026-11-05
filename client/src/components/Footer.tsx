@@ -6,11 +6,12 @@ export default function Footer() {
 
   return (
     <footer
+      className="container"
       style={{
         position: 'relative', zIndex: 1,
-        padding: '40px 16px',
+        paddingBlock: 40,
         display: 'flex', flexDirection: 'column',
-        alignItems: 'center', gap: 16,
+        alignItems: 'flex-start', gap: 16,
         borderTop: '1px solid var(--footer-line)',
       }}
     >

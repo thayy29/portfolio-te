@@ -36,6 +36,13 @@ export interface SoundCloudEmbed {
   fallback?: boolean;
 }
 
+export interface SpotifyPlaylist {
+  id: string;
+  title: string;
+  thumbnail_url: string;
+  url: string;
+}
+
 export interface WeatherData {
   temperature: number;
   weatherCode: number;

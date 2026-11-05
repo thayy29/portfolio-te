@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { useScrollVars } from '../hooks/useScrollVars';
 
 export default function Contact() {
   const ref = useScrollReveal();
+  useScrollVars(ref);
   const [sent, setSent] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 769;
 
@@ -16,16 +18,14 @@ export default function Contact() {
     <section
       id="contact"
       ref={ref}
-      className="rv"
+      className="rv section"
       style={{
-        position: 'relative', zIndex: 1,
         background: 'var(--contact-bg)',
-        padding: isMobile ? '60px 16px' : '80px 60px',
         color: 'var(--contact-c)',
         transition: 'background 0.5s, color 0.5s',
       }}
     >
-      <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div className="container contact__inner">
         <div className="hw-label" style={{ marginBottom: 32 }}>
           <span className="hw-led" /> Contato // Mensagem
         </div>
@@ -43,7 +43,7 @@ export default function Contact() {
           Tem um projeto ou ideia? Me manda uma mensagem.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 700 }}>
           <input
             type="text"
             placeholder="Nome"

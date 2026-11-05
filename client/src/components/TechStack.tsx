@@ -1,5 +1,6 @@
 import React from 'react';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { useScrollVars } from '../hooks/useScrollVars';
 
 const TAGS = [
   'React', 'TypeScript', 'Next.js', 'Node.js', 'JavaScript',
@@ -9,21 +10,21 @@ const TAGS = [
 
 export default function TechStack() {
   const ref = useScrollReveal();
+  useScrollVars(ref);
 
   return (
     <section
       ref={ref}
-      className="rv"
+      className="rv section container"
       style={{
-        position: 'relative', zIndex: 1,
-        padding: '40px 16px',
-        display: 'flex', flexWrap: 'wrap',
-        justifyContent: 'center', gap: 8,
-        maxWidth: 900, margin: '0 auto',
+        paddingBlock: 40,
+        display: 'flex', flexWrap: 'wrap', gap: 8,
       }}
     >
-      {TAGS.map((t) => (
-        <span key={t} className="tag">{t}</span>
+      {TAGS.map((t, i) => (
+        <span key={t} className="tag tag--float" style={{ '--lane': i % 3 } as React.CSSProperties}>
+          {t}
+        </span>
       ))}
     </section>
   );

@@ -1,133 +1,243 @@
 import React, { useRef, useEffect } from 'react';
+import { GLOBE_POINTS, LAND_MASK_BASE64 } from '../data/landMask';
 
-/* Continent dot coordinates (lat, lon) mapped to canvas */
-const CONTINENTS: [number, number][] = [
-  // South America
-  [-15, -55], [-23, -46], [-10, -65], [-33, -70], [-5, -50], [-20, -60], [-12, -77], [-3, -60],
-  // North America
-  [40, -100], [34, -118], [41, -87], [29, -95], [25, -80], [19, -99], [45, -73], [37, -122],
-  // Europe
-  [48, 2], [51, 0], [52, 13], [41, 12], [40, -3], [59, 18], [55, 37], [47, 19],
-  // Africa
-  [30, 31], [6, 3], [-1, 37], [-26, 28], [34, 9], [9, 38], [-4, 15], [12, -8],
-  // Asia
-  [35, 139], [31, 121], [28, 77], [37, 127], [1, 104], [13, 100], [39, 116], [22, 114],
-  // Oceania
-  [-34, 151], [-37, 145], [-28, 153], [-42, 173],
+const DEG = Math.PI / 180;
+const SAO_PAULO: [number, number] = [-23.55, -46.63];
+const START_ROTATION = -SAO_PAULO[1]; // opens with Brazil facing the viewer
+const TILT = -10 * DEG; // leans the south forward so São Paulo sits near the centre
+const SPEED = 8; // degrees per second, eastward like the real Earth
+const SCROLL_SPIN = 0.06; // extra degrees per pixel scrolled
+const PULSE_MS = 2400;
+
+type Vec3 = [number, number, number];
+
+const toVec3 = (lat: number, lon: number): Vec3 => [
+  Math.cos(lat * DEG) * Math.sin(lon * DEG),
+  Math.sin(lat * DEG),
+  Math.cos(lat * DEG) * Math.cos(lon * DEG),
 ];
 
-interface Props {
-  size?: number;
-}
+/* Land points on a Fibonacci sphere: evenly spaced, so no bunching at the poles */
+const LAND: Vec3[] = (() => {
+  const mask = Uint8Array.from(atob(LAND_MASK_BASE64), (c) => c.charCodeAt(0));
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const points: Vec3[] = [];
+  for (let i = 0; i < GLOBE_POINTS; i++) {
+    if (!(mask[i >> 3] & (1 << (i & 7)))) continue;
+    const y = 1 - (2 * (i + 0.5)) / GLOBE_POINTS;
+    const ring = Math.sqrt(1 - y * y);
+    points.push([ring * Math.sin(i * golden), y, ring * Math.cos(i * golden)]);
+  }
+  return points;
+})();
 
-export default function Globe({ size = 320 }: Props) {
+/* Graticule as polylines, one per meridian/parallel */
+const GRATICULE: Vec3[][] = (() => {
+  const lines: Vec3[][] = [];
+  for (let lon = -180; lon < 180; lon += 30) {
+    const line: Vec3[] = [];
+    for (let lat = -90; lat <= 90; lat += 4) line.push(toVec3(lat, lon));
+    lines.push(line);
+  }
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const line: Vec3[] = [];
+    for (let lon = -180; lon <= 180; lon += 4) line.push(toVec3(lat, lon));
+    lines.push(line);
+  }
+  return lines;
+})();
+
+const MARKER = toVec3(SAO_PAULO[0], SAO_PAULO[1]);
+
+/* Dots fade toward the limb to give the sphere depth */
+const DEPTH_BUCKETS = [
+  { maxZ: 0.35, alpha: 0.4 },
+  { maxZ: 0.7, alpha: 0.7 },
+  { maxZ: Infinity, alpha: 1 },
+];
+
+export default function Globe() {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    const wrap = wrapRef.current;
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas?.getContext('2d');
+    if (!wrap || !canvas || !ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    ctx.scale(dpr, dpr);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    let rotation = 0;
-    let animId: number;
+    let size = 0;
+    let rotation = START_ROTATION;
+    let colors = { land: '', grid: '', outline: '', fill: '', accent: '' };
 
-    const isDark = () => document.body.classList.contains('dark');
-
-    const project = (lat: number, lon: number, rot: number): [number, number, boolean] => {
-      const phi = (90 - lat) * (Math.PI / 180);
-      const theta = (lon + rot) * (Math.PI / 180);
-      const x = Math.sin(phi) * Math.cos(theta);
-      const y = Math.cos(phi);
-      const z = Math.sin(phi) * Math.sin(theta);
-      const r = size / 2 - 10;
-      return [size / 2 + x * r, size / 2 - y * r, z > 0];
+    /* Colours live in CSS tokens, so both themes are defined in one place */
+    const readColors = () => {
+      const css = getComputedStyle(document.body);
+      colors = {
+        land: css.getPropertyValue('--globe-land'),
+        grid: css.getPropertyValue('--globe-grid'),
+        outline: css.getPropertyValue('--globe-outline'),
+        fill: css.getPropertyValue('--globe-fill'),
+        accent: css.getPropertyValue('--accent'),
+      };
     };
 
-    const draw = () => {
-      ctx.clearRect(0, 0, size, size);
+    const draw = (now: number) => {
+      if (!size) return;
       const cx = size / 2;
       const cy = size / 2;
-      const r = size / 2 - 10;
-      const dark = isDark();
+      const r = size / 2 - 8;
 
-      // Globe outline
+      const sinR = Math.sin(rotation * DEG);
+      const cosR = Math.cos(rotation * DEG);
+      const sinT = Math.sin(TILT);
+      const cosT = Math.cos(TILT);
+
+      const project = ([x, y, z]: Vec3): Vec3 => {
+        const x1 = x * cosR + z * sinR;
+        const z1 = -x * sinR + z * cosR;
+        return [cx + x1 * r, cy - (y * cosT - z1 * sinT) * r, y * sinT + z1 * cosT];
+      };
+
+      ctx.clearRect(0, 0, size, size);
+
+      // Sphere body
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = dark ? 'rgba(255,107,44,0.12)' : 'rgba(255,107,44,0.18)';
+      ctx.fillStyle = colors.fill;
+      ctx.fill();
+      ctx.strokeStyle = colors.outline;
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Grid lines (longitude)
-      for (let lon = -180; lon < 180; lon += 30) {
-        ctx.beginPath();
-        for (let lat = -90; lat <= 90; lat += 2) {
-          const [px, py, vis] = project(lat, lon, rotation);
-          if (!vis) continue;
-          if (lat === -90) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+      // Graticule: lift the pen on the far side so lines never cut across the sphere
+      ctx.beginPath();
+      for (const line of GRATICULE) {
+        let penDown = false;
+        for (const point of line) {
+          const [px, py, pz] = project(point);
+          if (pz <= 0) {
+            penDown = false;
+          } else if (penDown) {
+            ctx.lineTo(px, py);
+          } else {
+            ctx.moveTo(px, py);
+            penDown = true;
+          }
         }
-        ctx.strokeStyle = dark ? 'rgba(255,107,44,0.07)' : 'rgba(255,107,44,0.1)';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
       }
+      ctx.strokeStyle = colors.grid;
+      ctx.lineWidth = 0.75;
+      ctx.stroke();
 
-      // Grid lines (latitude)
-      for (let lat = -60; lat <= 60; lat += 30) {
-        ctx.beginPath();
-        for (let lon = -180; lon <= 180; lon += 2) {
-          const [px, py, vis] = project(lat, lon, rotation);
-          if (!vis) continue;
-          if (lon === -180) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+      // Land, batched per depth bucket so a frame needs only three fills
+      const dot = Math.max(1, r * 0.0065);
+      const paths = DEPTH_BUCKETS.map(() => new Path2D());
+      for (const point of LAND) {
+        const [px, py, pz] = project(point);
+        if (pz <= 0) continue;
+        const bucket = DEPTH_BUCKETS.findIndex((b) => pz < b.maxZ);
+        paths[bucket].moveTo(px + dot, py);
+        paths[bucket].arc(px, py, dot, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = colors.land;
+      paths.forEach((path, i) => {
+        ctx.globalAlpha = DEPTH_BUCKETS[i].alpha;
+        ctx.fill(path);
+      });
+      ctx.globalAlpha = 1;
+
+      // São Paulo
+      const [sx, sy, sz] = project(MARKER);
+      if (sz > 0) {
+        const unit = Math.max(3, r * 0.018);
+        if (!reducedMotion) {
+          const pulse = (now % PULSE_MS) / PULSE_MS;
+          ctx.beginPath();
+          ctx.arc(sx, sy, unit + pulse * unit * 4, 0, Math.PI * 2);
+          ctx.strokeStyle = colors.accent;
+          ctx.globalAlpha = 1 - pulse;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
         }
-        ctx.strokeStyle = dark ? 'rgba(255,107,44,0.07)' : 'rgba(255,107,44,0.1)';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-      }
-
-      // Continent dots
-      for (const [lat, lon] of CONTINENTS) {
-        const [px, py, vis] = project(lat, lon, rotation);
-        if (!vis) continue;
         ctx.beginPath();
-        ctx.arc(px, py, 2, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,107,44,${dark ? 0.25 : 0.35})`;
+        ctx.arc(sx, sy, unit, 0, Math.PI * 2);
+        ctx.fillStyle = colors.accent;
         ctx.fill();
       }
-
-      // São Paulo highlight
-      const [spx, spy, spVis] = project(-23.55, -46.63, rotation);
-      if (spVis) {
-        ctx.beginPath();
-        ctx.arc(spx, spy, 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,107,44,0.7)';
-        ctx.fill();
-        // Glow
-        ctx.beginPath();
-        ctx.arc(spx, spy, 10, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,107,44,0.08)';
-        ctx.fill();
-      }
-
-      rotation += 0.15;
-      animId = requestAnimationFrame(draw);
     };
 
-    draw();
-    return () => cancelAnimationFrame(animId);
-  }, [size]);
+    /* Loop runs only while the globe is on screen */
+    let frameId = 0;
+    let lastTime = 0;
+    const frame = (now: number) => {
+      rotation += (SPEED * Math.min(now - lastTime, 100)) / 1000;
+      lastTime = now;
+      draw(now);
+      frameId = requestAnimationFrame(frame);
+    };
+    const start = () => {
+      if (reducedMotion || frameId) return;
+      lastTime = performance.now();
+      frameId = requestAnimationFrame(frame);
+    };
+    const stop = () => {
+      cancelAnimationFrame(frameId);
+      frameId = 0;
+    };
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      size = entry.contentRect.width;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(size * dpr);
+      canvas.height = Math.round(size * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw(performance.now());
+    });
+
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) start();
+      else stop();
+    });
+
+    const themeObserver = new MutationObserver(() => {
+      readColors();
+      draw(performance.now());
+    });
+
+    // Scrolling pushes the spin, so the globe feels tied to the page's movement
+    let lastScrollY = window.scrollY;
+    const onScroll = () => {
+      if (!reducedMotion) rotation += (window.scrollY - lastScrollY) * SCROLL_SPIN;
+      lastScrollY = window.scrollY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    readColors();
+    resizeObserver.observe(wrap);
+    visibilityObserver.observe(wrap);
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      stop();
+      window.removeEventListener('scroll', onScroll);
+      resizeObserver.disconnect();
+      visibilityObserver.disconnect();
+      themeObserver.disconnect();
+    };
+  }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ width: size, height: size }}
-      aria-label="Interactive globe"
-    />
+    <div ref={wrapRef} style={{ width: '100%', aspectRatio: '1 / 1' }}>
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label="Globo terrestre girando, com São Paulo em destaque"
+        style={{ display: 'block', width: '100%', height: '100%' }}
+      />
+    </div>
   );
 }

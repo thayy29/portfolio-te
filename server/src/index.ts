@@ -1,11 +1,10 @@
+import './env';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import dotenv from 'dotenv';
 import { githubRouter } from './routes/github';
 import { soundcloudRouter } from './routes/soundcloud';
-
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+import { spotifyRouter } from './routes/spotify';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,6 +15,7 @@ app.use(express.json());
 // API routes
 app.use('/api/github', githubRouter);
 app.use('/api/soundcloud', soundcloudRouter);
+app.use('/api/spotify', spotifyRouter);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
