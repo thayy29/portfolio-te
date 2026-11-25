@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSmoothScroll } from './hooks/useSmoothScroll';
+import { useCardSpotlight } from './hooks/useCardSpotlight';
 import ParticleBackground from './components/ParticleBackground';
 import CursorTrail from './components/CursorTrail';
 import StatusBar from './components/StatusBar';
@@ -16,6 +17,7 @@ import Footer from './components/Footer';
 
 export default function App() {
   useSmoothScroll();
+  useCardSpotlight();
 
   return (
     <>
@@ -30,8 +32,8 @@ export default function App() {
         <TechStack />
         <Projects />
         <About />
-        <Contact />
         <Music />
+        <Contact />
       </main>
 
       <Footer />

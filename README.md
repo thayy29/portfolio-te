@@ -16,6 +16,7 @@ Portfolio pessoal inspirado na estética hardware do **Teenage Engineering KO II
 - **Dark/Light Theme** — Toggle com persistência em localStorage
 - **GitHub Integration** — Avatar, bio, repositórios e contadores reais via GitHub API
 - **SoundCloud Widget** — Player discreto com músicas via oEmbed API (desktop)
+- **Seção Music** — Playlists públicas com o embed oficial do Spotify e últimas faixas com o widget oficial do SoundCloud
 - **Animated Counters** — Contadores animados com easing para dados reais do GitHub
 - **Interactive Globe** — Globo rotativo em Canvas com destaque para São Paulo
 - **Particle Network** — Background com partículas interconectadas (40 mobile, 90 desktop)
@@ -117,6 +118,9 @@ GITHUB_TOKEN=              # Opcional — aumenta rate limit de 60 para 5000 req
 # SoundCloud
 SOUNDCLOUD_USERNAME=classocls
 
+# Spotify
+SPOTIFY_PLAYLIST_IDS=      # Opcional — IDs de playlists públicas, separados por vírgula, na ordem de exibição
+
 # Server
 PORT=3001
 ```
@@ -176,6 +180,7 @@ O servidor Express serve os arquivos estáticos do client em produção.
 | **GitHub REST** | `api.github.com/users/{user}` | Token opcional | 5 min |
 | **GitHub Repos** | `api.github.com/users/{user}/repos` | Token opcional | 5 min |
 | **SoundCloud oEmbed** | `soundcloud.com/oembed` | Nenhuma | 15 min |
+| **Spotify oEmbed** | `open.spotify.com/oembed` | Nenhuma | 1 h |
 | **Open-Meteo** | `api.open-meteo.com/v1/forecast` | Nenhuma | Client-side |
 
 ---

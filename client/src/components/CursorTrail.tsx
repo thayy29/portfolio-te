@@ -1,27 +1,18 @@
 import React, { useRef, useEffect } from 'react';
 
-const NODE_COUNT = 16;
-const HEAD_FOLLOW = 0.32; // how quickly the filament's head catches the pointer, per 60fps frame
-const NODE_FOLLOW = 0.3; // how quickly each node catches the one ahead of it
-const ACTIVE_MS = 500; // reticle stays lit this long after the last movement
-const MOTE_LIFE_MS = 650;
-const MOTE_EVERY_MS = 70;
-const MAX_MOTES = 20;
-const RETICLE_RADIUS = 11;
-const RETICLE_RADIUS_HOVER = 18;
+const NODE_COUNT = 12;
+const HEAD_FOLLOW = 0.36; // how quickly the filament's head catches the pointer, per 60fps frame
+const NODE_FOLLOW = 0.34; // how quickly each node catches the one ahead of it
+const ACTIVE_MS = 350; // stays lit this long after the last movement
+const LINE_ALPHA = 0.55;
+const RETICLE_ALPHA = 0.28;
+const RETICLE_RADIUS = 9;
+const RETICLE_RADIUS_HOVER = 15;
 const INTERACTIVE = 'a, button, input, textarea, select, label';
 
-interface Mote {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  born: number;
-}
-
 /**
- * Thin filament that chases the native pointer, with a rotating reticle and a few fading
- * pixels. The native pointer stays visible, so this is purely decorative.
+ * Hairline that chases the native pointer, with a faint rotating reticle. The native pointer
+ * stays visible, so this is purely decorative.
  */
 export default function CursorTrail() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,11 +29,9 @@ export default function CursorTrail() {
 
     const nodes = Array.from({ length: NODE_COUNT }, () => ({ x: 0, y: 0 }));
     const target = { x: 0, y: 0 };
-    let motes: Mote[] = [];
     let frameId = 0;
     let lastFrame = 0;
     let lastMove = -Infinity;
-    let lastMote = 0;
     let activity = 0; // 0..1, eased brightness of the whole effect
     let radius = RETICLE_RADIUS;
     let hovering = false;
@@ -62,9 +51,9 @@ export default function CursorTrail() {
 
       const ease = (k: number) => 1 - Math.pow(1 - k, steps);
       const active = now - lastMove < ACTIVE_MS;
-      activity += ((active ? 1 : 0) - activity) * ease(active ? 0.2 : 0.07);
-      radius += ((hovering ? RETICLE_RADIUS_HOVER : RETICLE_RADIUS) - radius) * ease(0.18);
-      spin += dt * (hovering ? 0.0032 : 0.0016);
+      activity += ((active ? 1 : 0) - activity) * ease(active ? 0.16 : 0.08);
+      radius += ((hovering ? RETICLE_RADIUS_HOVER : RETICLE_RADIUS) - radius) * ease(0.16);
+      spin += dt * 0.0012;
 
       nodes[0].x += (target.x - nodes[0].x) * ease(HEAD_FOLLOW);
       nodes[0].y += (target.y - nodes[0].y) * ease(HEAD_FOLLOW);
@@ -73,61 +62,33 @@ export default function CursorTrail() {
         nodes[i].y += (nodes[i - 1].y - nodes[i].y) * ease(NODE_FOLLOW);
       }
 
-      const tail = nodes[NODE_COUNT - 1];
-      const stretch = Math.hypot(nodes[0].x - tail.x, nodes[0].y - tail.y);
-
-      // Motes shed sideways from the filament, only while it is stretched by movement
-      if (stretch > 30 && now - lastMote > MOTE_EVERY_MS && motes.length < MAX_MOTES) {
-        lastMote = now;
-        const from = nodes[Math.floor(NODE_COUNT / 2)];
-        const side = Math.random() < 0.5 ? -1 : 1;
-        const dx = (nodes[0].x - tail.x) / stretch;
-        const dy = (nodes[0].y - tail.y) / stretch;
-        motes.push({ x: from.x, y: from.y, vx: -dy * side * 0.02, vy: dx * side * 0.02, born: now });
-      }
-      motes = motes.filter((m) => now - m.born < MOTE_LIFE_MS);
-
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--cursor-trail');
+      ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--cursor-trail');
       ctx.lineCap = 'round';
 
-      // Filament, with a wide faint pass under the thin one as a soft glow
       for (let i = 1; i < NODE_COUNT; i++) {
-        const fade = Math.pow(1 - i / NODE_COUNT, 1.5);
+        const fade = Math.pow(1 - i / NODE_COUNT, 1.6);
         ctx.beginPath();
         ctx.moveTo(nodes[i - 1].x, nodes[i - 1].y);
         ctx.lineTo(nodes[i].x, nodes[i].y);
-        ctx.globalAlpha = fade * activity * 0.1;
-        ctx.lineWidth = 5 * fade + 1;
-        ctx.stroke();
-        ctx.globalAlpha = fade * activity * 0.65;
-        ctx.lineWidth = 1.25 * fade + 0.25;
+        ctx.globalAlpha = fade * activity * LINE_ALPHA;
+        ctx.lineWidth = fade + 0.25;
         ctx.stroke();
       }
 
-      for (const m of motes) {
-        const age = now - m.born;
-        m.x += m.vx * dt;
-        m.y += m.vy * dt;
-        ctx.globalAlpha = (1 - age / MOTE_LIFE_MS) * activity * 0.5;
-        ctx.fillRect(m.x - 0.75, m.y - 0.75, 1.5, 1.5);
-      }
-
-      // Reticle: three rotating arcs, slightly behind the pointer
-      const center = nodes[1];
-      ctx.globalAlpha = activity * 0.55;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 3; i++) {
-        const start = spin + (i * Math.PI * 2) / 3;
+      // Reticle: two rotating arcs, slightly behind the pointer
+      ctx.globalAlpha = activity * RETICLE_ALPHA;
+      ctx.lineWidth = 0.75;
+      for (let i = 0; i < 2; i++) {
+        const start = spin + i * Math.PI;
         ctx.beginPath();
-        ctx.arc(center.x, center.y, radius, start, start + Math.PI / 3);
+        ctx.arc(nodes[1].x, nodes[1].y, radius, start, start + Math.PI / 2);
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
 
       // Stop once everything has faded, so a still mouse costs nothing
-      const settled = !active && activity < 0.01 && motes.length === 0;
-      if (settled) {
+      if (!active && activity < 0.01) {
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         frameId = 0;
       } else {

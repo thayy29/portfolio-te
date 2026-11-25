@@ -5,8 +5,8 @@ import { useTheme } from '../hooks/useTheme';
 const LINKS = [
   { href: '#projects', label: 'Projetos' },
   { href: '#about', label: 'Sobre' },
-  { href: '#contact', label: 'Contato' },
   { href: '#music', label: 'Music' },
+  { href: '#contact', label: 'Contato' },
 ];
 
 const CLOSE_ON_SCROLL_PX = 40;
@@ -48,7 +48,7 @@ export default function Nav() {
     <nav ref={navRef} className={`nav ${open ? 'is-open' : ''}`} aria-label="Principal">
       <div className="nav__bar">
         <a href="#hero" aria-label="Voltar ao início" className="nav__logo">
-          <Logo size={32} />
+          <Logo />
         </a>
 
         <div className="nav__actions">

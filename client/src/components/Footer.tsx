@@ -15,7 +15,7 @@ export default function Footer() {
         borderTop: '1px solid var(--footer-line)',
       }}
     >
-      <Logo size={24} />
+      <Logo />
       <span
         style={{
           fontFamily: "'Space Mono', monospace",

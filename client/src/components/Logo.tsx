@@ -2,7 +2,7 @@ import React from 'react';
 
 /* Grid Organism T — symbol only (no "Thayana" text per user request)
    SVG metaball / goo filter for organic TE-inspired logo */
-export default function Logo({ size = 40 }: { size?: number }) {
+export default function Logo({ size = 24 }: { size?: number }) {
   return (
     <svg
       width={size}

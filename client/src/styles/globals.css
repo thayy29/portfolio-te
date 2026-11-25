@@ -24,9 +24,6 @@ body {
   --tag-b: rgba(26,26,26,0.1);
   --tag-h-bg: #1A1A1A;
   --tag-h-c: #F2F0EB;
-  --contact-bg: #E6E2DB;
-  --contact-c: #1A1A1A;
-  --contact-ib: rgba(26,26,26,0.12);
   --dot-grid: rgba(26,26,26,0.04);
   --preview-bg: #E8E4DD;
   --badge-bg: rgba(26,26,26,0.06);
@@ -43,7 +40,14 @@ body {
   --globe-grid: rgba(26,26,26,0.08);
   --globe-outline: rgba(26,26,26,0.18);
   --globe-fill: rgba(255,255,255,0.45);
-  --cursor-trail: #D9480F;
+  --cursor-trail: #FFAD80;
+  --glass-bg: rgba(255,255,255,0.55);
+  --glass-border: rgba(26,26,26,0.07);
+  --glass-edge: rgba(255,255,255,0.95);
+  --glass-shadow: 0 1px 2px rgba(26,26,26,0.04), 0 18px 50px -18px rgba(26,26,26,0.18);
+  --glass-glow: rgba(255,107,44,0.1);
+  --ambient-a: rgba(255,107,44,0.1);
+  --ambient-b: rgba(26,26,26,0.05);
   --pill-bg: #111111;
   --pill-fg: #F2F0EB;
   --pill-btn-bg: #F2F0EB;
@@ -62,7 +66,6 @@ body {
   --footer-line: rgba(0,0,0,0.04);
   --btn-shadow: rgba(0,0,0,0.12);
   --btn-shadow-deep: rgba(0,0,0,0.08);
-  --input-placeholder: rgba(26,26,26,0.2);
 
   background: var(--bg);
   color: var(--text);
@@ -80,9 +83,6 @@ body.dark {
   --tag-b: rgba(242,240,235,0.1);
   --tag-h-bg: #E8E6E1;
   --tag-h-c: #0A0A0A;
-  --contact-bg: #0D0D0D;
-  --contact-c: #E8E6E1;
-  --contact-ib: rgba(242,240,235,0.08);
   --dot-grid: rgba(242,240,235,0.03);
   --preview-bg: #0D0D0D;
   --badge-bg: rgba(242,240,235,0.06);
@@ -98,7 +98,14 @@ body.dark {
   --globe-grid: rgba(242,240,235,0.08);
   --globe-outline: rgba(242,240,235,0.2);
   --globe-fill: rgba(242,240,235,0.03);
-  --cursor-trail: #FF6B2C;
+  --cursor-trail: #FFD9C2;
+  --glass-bg: rgba(255,255,255,0.035);
+  --glass-border: rgba(242,240,235,0.08);
+  --glass-edge: rgba(242,240,235,0.24);
+  --glass-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 24px 60px -24px rgba(0,0,0,0.85);
+  --glass-glow: rgba(255,107,44,0.13);
+  --ambient-a: rgba(255,107,44,0.11);
+  --ambient-b: rgba(242,240,235,0.05);
   --pill-bg: #F2F0EB;
   --pill-fg: #111111;
   --pill-btn-bg: #111111;
@@ -117,7 +124,6 @@ body.dark {
   --footer-line: rgba(255,255,255,0.04);
   --btn-shadow: rgba(0,0,0,0.5);
   --btn-shadow-deep: rgba(0,0,0,0.5);
-  --input-placeholder: rgba(232,230,225,0.18);
 }
 
 a { color: inherit; text-decoration: none; }
@@ -240,6 +246,79 @@ main { overflow-x: clip; }
 /* --w is the word's position in the text (0..1); it finishes lighting up at about 85% pinned */
 .about__word { opacity: clamp(0.14, calc((var(--pin, 1) * 1.2 - var(--w)) * 10), 1); }
 
+/* === Ambient backdrop: gives the glass cards something to blur === */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(45vw 45vw at 88% 12%, var(--ambient-a), transparent 70%),
+    radial-gradient(40vw 40vw at 8% 78%, var(--ambient-a), transparent 70%),
+    radial-gradient(35vw 35vw at 50% 50%, var(--ambient-b), transparent 70%),
+    radial-gradient(var(--dot-grid) 1px, transparent 1px) 0 0 / 24px 24px;
+}
+.tag {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* === Contact: oversized closing headline beside a glass form === */
+.contact__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 72px);
+  align-items: stretch;
+}
+.contact__intro { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+.contact__headline {
+  margin: 0;
+  font-size: clamp(40px, 6vw, 76px);
+  font-weight: 700; line-height: 1.02; letter-spacing: -0.02em;
+}
+.contact__headline span { display: block; }
+.contact__headline-accent { color: var(--accent); }
+.contact__socials { display: flex; flex-wrap: wrap; gap: 10px; }
+.contact__form {
+  display: flex; flex-direction: column; gap: 28px;
+  padding: clamp(28px, 3.5vw, 44px);
+}
+.contact__submit { align-self: flex-start; position: relative; z-index: 1; }
+
+/* The label rests inside the field and floats up on focus or once there is text */
+.field { position: relative; z-index: 1; display: block; padding-left: 36px; }
+.field__index {
+  position: absolute; left: 0; top: 22px;
+  font-family: 'Space Mono', monospace; font-size: 11px;
+  color: var(--accent);
+}
+.field__input {
+  display: block; width: 100%;
+  padding: 20px 0 10px;
+  border: none; border-bottom: 1px solid var(--tag-b); outline: none;
+  background: transparent; color: inherit;
+  font-family: 'Space Grotesk', sans-serif; font-size: 17px;
+  resize: vertical;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.field__label {
+  position: absolute; left: 36px; top: 20px;
+  font-size: 17px; opacity: 0.6;
+  transform-origin: left top;
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), opacity 0.25s ease, color 0.25s ease;
+}
+.field__input:focus { border-color: var(--accent); box-shadow: 0 1px 0 0 var(--accent); }
+.field__input:focus ~ .field__label,
+.field__input:not(:placeholder-shown) ~ .field__label {
+  transform: translateY(-20px) scale(0.72);
+  opacity: 1;
+}
+.field__input:focus ~ .field__label { color: var(--accent); }
+
+@media (max-width: 900px) {
+  .contact__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* === Music === */
 .music__heading {
   font-size: clamp(28px, 3vw, 36px); font-weight: 700;
@@ -326,6 +405,13 @@ main { overflow-x: clip; }
 @media (max-width: 900px) {
   .music__panel { grid-template-columns: minmax(0, 1fr); }
   .music__player, .music__player iframe { min-height: 400px; }
+  /* A swipeable strip keeps the player in view right below the covers */
+  .music__covers {
+    display: flex; gap: 12px;
+    overflow-x: auto; scroll-snap-type: x proximity;
+    padding: 4px; margin: -4px;
+  }
+  .music__cover { flex: 0 0 112px; scroll-snap-align: start; }
 }
 @media (prefers-reduced-motion: reduce) {
   .music__eq i, .music__waveform span { animation: none; }
@@ -420,14 +506,35 @@ main { overflow-x: clip; }
 
 /* === Hardware Panel === */
 .hw-panel {
-  background: var(--card);
-  border: 1px solid var(--card-b);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--glass-border);
   border-radius: var(--hw-radius);
-  box-shadow: var(--inset), 0 4px 20px rgba(0,0,0,0.08);
+  box-shadow: var(--inset), var(--glass-shadow);
   position: relative;
   transition: background 0.5s, border-color 0.5s, box-shadow 0.5s;
 }
-body.dark .hw-panel { box-shadow: var(--inset), 0 4px 20px rgba(0,0,0,0.2); }
+/* Hairline that catches light on the top-left edge and picks up the accent on the opposite one */
+.hw-panel::before {
+  content: ''; position: absolute; inset: -1px;
+  padding: 1px; border-radius: inherit;
+  background: linear-gradient(135deg, var(--glass-edge), transparent 38%, transparent 68%, rgba(255,107,44,0.35));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* Soft glow that follows the mouse, positioned by useCardSpotlight */
+.hw-panel::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), var(--glass-glow), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.hw-panel:hover::after { opacity: 1; }
 
 .hw-screw {
   width: 8px; height: 8px; border-radius: 50%;
@@ -462,7 +569,7 @@ body.dark .hw-panel { box-shadow: var(--inset), 0 4px 20px rgba(0,0,0,0.2); }
 }
 .card:hover {
   transform: translateY(-4px) scale(1.005);
-  box-shadow: var(--inset), 0 12px 40px rgba(0,0,0,0.12);
+  box-shadow: var(--inset), 0 22px 60px -22px rgba(255,107,44,0.38);
   border-color: rgba(255,107,44,0.3);
 }
 
@@ -518,16 +625,6 @@ body.dark .hw-panel { box-shadow: var(--inset), 0 4px 20px rgba(0,0,0,0.2); }
   background: var(--accent); border-radius: 50%;
   animation: blink 2s ease-in-out infinite;
 }
-
-/* === Inputs === */
-.input-line {
-  font-family: 'Space Grotesk', sans-serif; font-size: 16px;
-  padding: 14px 0; border: none; border-bottom: 1px solid var(--contact-ib);
-  background: transparent; color: inherit; width: 100%;
-  transition: border-color 0.3s ease; outline: none;
-}
-.input-line:focus { border-color: var(--accent) !important; box-shadow: 0 2px 0 0 var(--accent); }
-.input-line::placeholder { color: var(--input-placeholder); }
 
 /* === Social buttons === */
 .social-dark {
