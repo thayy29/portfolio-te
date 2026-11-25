@@ -1,5 +1,7 @@
 # 🎛️ Portfolio TE — Teenage Engineering Inspired
 
+🔗 **Live demo:** [thayanaclasso.vercel.app](https://thayanaclasso.vercel.app)
+
 Portfolio pessoal inspirado na estética hardware do **Teenage Engineering KO II**. Construído com React, TypeScript e Node.js.
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
